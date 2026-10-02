@@ -29,14 +29,15 @@ last_updated: "2026-10-01"
 The explorer already has work in flight to import the published reports of
 [semantic-conventions-conformance](https://github.com/open-telemetry/semantic-conventions-conformance)
 ([#1183](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/issues/1183), open PR
-[#1188](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/pull/1188)). A local
-trial ran three modules of the 0.8.1 package (errors, console, web-vitals), each alone on a page in
-headless Chrome, through that repo's runner at `1860208` against semantic conventions v1.44.0. The
-scenario files are local and not proposed upstream, so these results are unverified for a reader.
-`browser.web_vital` conformed, all six attributes found. `browser.console` was reported as
-`missing_event` and `missing_attribute`, since v1.44.0 does not define it. `exception` was reported
-missing `exception.escaped`, which v1.44.0 marks deprecated, so that is not a gap in the
-instrumentation. Every scope was flagged for a missing `schema_url`, matching the audit.
+[#1188](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/pull/1188)). A trial ran
+three modules of the 0.8.1 package (errors, console, web-vitals), each alone on a page in headless
+Chrome, through that repo's runner at `1860208` against semantic conventions v1.44.0. The scenarios
+are proposed in
+[semantic-conventions-conformance#258](https://github.com/open-telemetry/semantic-conventions-conformance/pull/258),
+not merged yet. `browser.web_vital` conformed, all six attributes found. `browser.console` was
+reported as `missing_event` and `missing_attribute`, since v1.44.0 does not define it. `exception`
+was reported missing `exception.escaped`, which v1.44.0 marks deprecated, so that is not a gap in
+the instrumentation. Every scope was flagged for a missing `schema_url`, matching the audit.
 
 ## Open questions
 
