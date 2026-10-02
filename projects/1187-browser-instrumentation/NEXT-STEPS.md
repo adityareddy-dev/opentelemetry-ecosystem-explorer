@@ -4,7 +4,7 @@ issue: 1187
 type: roadmap
 phase: meta
 status: in-progress
-last_updated: "2026-10-01"
+last_updated: "2026-10-02"
 ---
 
 ## Done
@@ -41,8 +41,9 @@ the instrumentation. Every scope was flagged for a missing `schema_url`, matchin
 
 ## Open questions
 
-1. Is one package entry with a `modules` list fine, or is one entry per module better for the list
-   page?
+1. Answered on the issue on 2026-10-02: one package entry with a `modules` list, since the package
+   holds all the submodules, the way the Java agent packages its instrumentations
+   ([comment](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/issues/1187#issuecomment-5949532605)).
 2. Can another SIG's repo share the JS watcher, its nightly PR and its failure notification?
 3. Should browser entries leave out the five keys the browser repo has no value for, or write them
    with empty values?
