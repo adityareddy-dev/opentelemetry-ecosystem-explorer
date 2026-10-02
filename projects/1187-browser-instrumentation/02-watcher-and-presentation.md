@@ -63,9 +63,13 @@ the list page reads `modules`, a user sees one row for nine instrumentations and
 "fetch" misses it.
 
 Reading at release tags keeps each file equal to what was published (the 0.7.0 case in the audit),
-though the shared tag parser strips only a leading `v`
-(`ecosystem-automation/watcher-common/src/watcher_common/version_detector.py:56`), so the prefix
-needs a filter. Reading `main` like the js-contrib path is simpler (open question 4).
+though the shared code assumes plain `v` tags in two places. The tag parser strips only a leading
+`v` (`ecosystem-automation/watcher-common/src/watcher_common/version_detector.py:56`), and
+`checkout_version` rebuilds the ref as `v{version}` (line 90 of the same file, also
+`repository_manager.py:142`). So a `browser-instrumentation-v*` tag is neither found nor checked
+out. Either both learn the prefix, or the watcher reads files with `read_file_at_ref` (line 119),
+which takes any ref and needs no checkout. Reading `main` like the js-contrib path is simpler (open
+question 4).
 
 ## Telemetry
 
