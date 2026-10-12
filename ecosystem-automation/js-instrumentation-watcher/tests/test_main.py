@@ -23,6 +23,18 @@ import pytest
 from js_instrumentation_watcher.main import REGISTRY_DIR, configure_logging, main
 
 
+@pytest.fixture(autouse=True)
+def browser_wiring():
+    """Keep all entry-point tests offline for both sources."""
+    with (
+        patch("js_instrumentation_watcher.main.BrowserRepositoryManager") as repo_manager,
+        patch("js_instrumentation_watcher.main.BrowserInstrumentationSync") as sync,
+    ):
+        repo_manager.return_value.setup.return_value = Path("/repos/opentelemetry-browser")
+        sync.return_value.sync.return_value = {"new": [], "skipped": [], "failed": []}
+        yield repo_manager, sync
+
+
 @pytest.fixture
 def wiring():
     """Patch the three collaborators main() wires together."""
@@ -89,6 +101,29 @@ def test_main_runs_the_sync(wiring, monkeypatch):
     main()
 
     sync.return_value.sync.assert_called_once_with()
+
+
+def test_main_syncs_browser_releases_into_the_same_inventory(wiring, browser_wiring, monkeypatch):
+    _, inventory_manager, _ = wiring
+    browser_manager, browser_sync = browser_wiring
+    monkeypatch.setenv("JS_CONTRIB_REPOS_DIR", "custom_repos")
+
+    main()
+
+    browser_manager.assert_called_once_with(base_dir="custom_repos")
+    browser_sync.assert_called_once_with(
+        repo_path=Path("/repos/opentelemetry-browser"),
+        inventory_manager=inventory_manager.return_value,
+    )
+    browser_sync.return_value.sync.assert_called_once_with()
+
+
+def test_main_fails_when_a_browser_release_cannot_be_collected(wiring, browser_wiring):
+    _, sync = browser_wiring
+    sync.return_value.sync.return_value = {"new": [], "skipped": [], "failed": ["browser-instrumentation@0.9.0"]}
+
+    with pytest.raises(RuntimeError, match=r"Failed browser releases: browser-instrumentation@0.9.0"):
+        main()
 
 
 def test_main_logs_the_sync_summary(wiring, monkeypatch, caplog):

@@ -3,8 +3,9 @@
 Automation tool for synchronizing OpenTelemetry JavaScript instrumentation metadata to the ecosystem
 registry.
 
-The metadata source is the contrib repository:
-<https://github.com/open-telemetry/opentelemetry-js-contrib>
+The metadata sources are the contrib repository
+(<https://github.com/open-telemetry/opentelemetry-js-contrib>) and the browser repository
+(<https://github.com/open-telemetry/opentelemetry-browser>).
 
 ## Methodology
 
@@ -27,6 +28,28 @@ Process:
 
 Unlike the Java agent — which has a single release version covering all instrumentations — JS
 packages version **independently**. Each package is therefore stored at its own version.
+
+### Browser releases
+
+The same watcher also collects `@opentelemetry/browser-instrumentation`. Its instrumentations are
+subpath exports of one npm package, so they are stored as a sorted `modules` list in one package
+entry at `javascript/browser-instrumentation/v{version}.yaml`.
+
+- Clone `opentelemetry-browser` into the same base directory. Cached clones explicitly fetch all
+  tags. `OTEL_BROWSER_REPO_PATH` uses an existing checkout as-is, without network access or checkout
+  changes; that checkout must already contain the release tags to collect.
+- Discover stable `browser-instrumentation-v*` tags, ignoring SDK tags and prereleases. The first
+  run collects all available stable releases; subsequent runs skip versions already in the
+  inventory.
+- Read `packages/instrumentation/package.json` and each exported module's `src/<name>/index.ts` at
+  that exact tag. Main may contain unreleased modules before the package version changes.
+- Record each module's `name`, `import_path` and `source_path`. Blocked exports and exports without
+  a corresponding source entry point are omitted. The package version must match the release tag.
+
+The browser entry includes only metadata available from that source. It omits the contrib-specific
+owners, Node bundle membership, engine and target-library version fields. Scope names, telemetry,
+platform filtering, and publishing module metadata in the Explorer UI remain follow-up work under
+[issue #1187](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/issues/1187).
 
 ## Registry layout
 

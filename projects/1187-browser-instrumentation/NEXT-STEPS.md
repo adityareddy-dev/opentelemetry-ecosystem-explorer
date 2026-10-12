@@ -4,7 +4,7 @@ issue: 1187
 type: roadmap
 phase: meta
 status: in-progress
-last_updated: "2026-10-02"
+last_updated: "2026-10-11"
 ---
 
 ## Done
@@ -47,7 +47,11 @@ the instrumentation. Every scope was flagged for a missing `schema_url`, matchin
 2. Can another SIG's repo share the JS watcher, its nightly PR and its failure notification?
 3. Should browser entries leave out the five keys the browser repo has no value for, or write them
    with empty values?
-4. Read at the release tag or at `main`? If tags, backfill 0.2.0 to 0.8.0 or start at 0.8.1?
+4. Release tags were confirmed in the
+   [issue discussion](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/issues/1187#issuecomment-6098675761).
+   The first implementation proposes collecting all missing stable releases, currently 0.2.0 through
+   0.8.2. The backfill starting point remains a review decision; the answer about tags did not
+   settle it.
 5. Is a `platform` field wanted on JS entries? If so, is the `web` keyword the right signal, and how
    should the five existing packages get it, given old files are immutable?
 6. Is the "JS / Node" home card meant to be Node only?
