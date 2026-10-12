@@ -137,6 +137,68 @@ def test_package_file_keeps_published_fields(registry, writer):
     assert package["tested_versions"] == tested
 
 
+def test_browser_modules_are_published_and_indexed_for_search(registry, writer):
+    modules = [
+        {
+            "name": "console",
+            "import_path": "@opentelemetry/browser-instrumentation/experimental/console",
+            "source_path": "packages/instrumentation/src/console",
+        },
+        {
+            "name": "fetch",
+            "import_path": "@opentelemetry/browser-instrumentation/experimental/fetch",
+            "source_path": "packages/instrumentation/src/fetch",
+        },
+    ]
+    registry.save(
+        "browser-instrumentation",
+        "0.8.2",
+        _release(
+            "browser-instrumentation",
+            "0.8.2",
+            npm_package="@opentelemetry/browser-instrumentation",
+            modules=modules,
+        ),
+    )
+
+    run_javascript_builder(inventory_manager=registry, db_writer=writer)
+
+    assert _package_for(writer, "browser-instrumentation", "0.8.2")["modules"] == modules
+    assert _index_entry(writer, "browser-instrumentation")["modules"] == ["console", "fetch"]
+
+
+def test_browser_module_changes_get_separate_package_files(registry, writer):
+    console = {
+        "name": "console",
+        "import_path": "@opentelemetry/browser-instrumentation/experimental/console",
+        "source_path": "packages/instrumentation/src/console",
+    }
+    fetch = {
+        "name": "fetch",
+        "import_path": "@opentelemetry/browser-instrumentation/experimental/fetch",
+        "source_path": "packages/instrumentation/src/fetch",
+    }
+    for version, modules in (("0.8.1", [console]), ("0.8.2", [console, fetch])):
+        registry.save(
+            "browser-instrumentation",
+            version,
+            _release(
+                "browser-instrumentation",
+                version,
+                npm_package="@opentelemetry/browser-instrumentation",
+                modules=modules,
+            ),
+        )
+
+    run_javascript_builder(inventory_manager=registry, db_writer=writer)
+
+    entry = _index_entry(writer, "browser-instrumentation")
+    assert entry["modules"] == ["console", "fetch"]
+    assert entry["releases"][0]["hash"] != entry["releases"][1]["hash"]
+    assert _package_for(writer, "browser-instrumentation", "0.8.1")["modules"] == [console]
+    assert _package_for(writer, "browser-instrumentation", "0.8.2")["modules"] == [console, fetch]
+
+
 def test_index_lists_releases_newest_first_by_semver(registry, writer):
     run_javascript_builder(inventory_manager=registry, db_writer=writer)
 

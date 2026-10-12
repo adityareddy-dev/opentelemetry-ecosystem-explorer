@@ -40,6 +40,7 @@ PACKAGE_FIELDS = (
     "in_auto_instrumentations_node",
     "supported_versions",
     "tested_versions",
+    "modules",
 )
 
 
@@ -60,7 +61,7 @@ def make_index_package(package: dict[str, Any], releases: list[dict[str, str]]) 
     Returns:
         The fields the list page needs, plus where to find each release.
     """
-    return {
+    index_package = {
         "name": package["name"],
         "npm_package": package.get("npm_package"),
         "description": package.get("description"),
@@ -68,6 +69,9 @@ def make_index_package(package: dict[str, Any], releases: list[dict[str, str]]) 
         "version": releases[0]["version"],
         "releases": releases,
     }
+    if "modules" in package:
+        index_package["modules"] = [module["name"] for module in package["modules"]]
+    return index_package
 
 
 def run_javascript_builder(
