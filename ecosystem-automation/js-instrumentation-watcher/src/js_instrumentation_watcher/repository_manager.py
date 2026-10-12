@@ -16,15 +16,19 @@
 """Repository manager for opentelemetry-js-contrib."""
 
 import logging
+import subprocess
 from pathlib import Path
 
-from watcher_common.repository_manager import BaseRepositoryManager
+from watcher_common.repository_manager import _GIT, BaseRepositoryManager
 
 logger = logging.getLogger(__name__)
 
 REPO_URL = "https://github.com/open-telemetry/opentelemetry-js-contrib.git"
 REPO_ENV_VAR = "JS_CONTRIB_REPO_PATH"
 REPO_NAME = "opentelemetry-js-contrib"
+BROWSER_REPO_URL = "https://github.com/open-telemetry/opentelemetry-browser.git"
+BROWSER_REPO_ENV_VAR = "OTEL_BROWSER_REPO_PATH"
+BROWSER_REPO_NAME = "opentelemetry-browser"
 
 
 class JsContribRepositoryManager(BaseRepositoryManager):
@@ -52,5 +56,35 @@ class JsContribRepositoryManager(BaseRepositoryManager):
         else:
             logger.info("Cloning opentelemetry-js-contrib...")
             self._clone_repository(REPO_URL, repo_path)
+
+        return repo_path
+
+
+class BrowserRepositoryManager(BaseRepositoryManager):
+    """Manage the browser source and refresh tags on cached, watcher-owned clones."""
+
+    def setup(self) -> Path:
+        """Use an explicit local checkout as-is, or clone/update all release tags."""
+        existing = self._get_repository_path(BROWSER_REPO_ENV_VAR)
+        if existing:
+            return existing
+
+        repo_path = self.base_dir / BROWSER_REPO_NAME
+        if repo_path.exists():
+            self._pull_latest(repo_path)
+            # A normal pull need not fetch tags whose commits are no longer
+            # reachable from main. Historical releases are the source of truth.
+            try:
+                subprocess.run(  # noqa: S603 -- fixed git operation on the watcher-owned clone
+                    [_GIT, "fetch", "--tags", "origin"],
+                    cwd=repo_path,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Failed to fetch browser release tags: {e.stderr}") from e
+        else:
+            self._clone_repository(BROWSER_REPO_URL, repo_path)
 
         return repo_path

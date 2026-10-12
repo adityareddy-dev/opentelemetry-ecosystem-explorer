@@ -25,14 +25,18 @@ from watcher_common.repository_manager import _GIT
 class VersionDetector:
     """Detects versions in OpenTelemetry git repositories."""
 
-    def __init__(self, repo_path: str | Path):
+    def __init__(self, repo_path: str | Path, tag_prefix: str | None = None):
         """Args:
             repo_path: Path to the git repository
+            tag_prefix: Exact component release prefix, for example
+                ``browser-instrumentation-v``. None preserves the existing
+                plain-version / leading-v tag detection.
 
         Raises:
             ValueError: If repository path does not exist
         """
         self.repo_path = Path(repo_path)
+        self.tag_prefix = tag_prefix
         if not self.repo_path.exists():
             raise ValueError(f"Repository path does not exist: {repo_path}")
 
@@ -51,9 +55,11 @@ class VersionDetector:
         """Parse all tag names into non-prerelease Version objects, ignoring invalid tags."""
         versions = []
         for tag_name in self._list_tags():
+            if self.tag_prefix is not None and not tag_name.startswith(self.tag_prefix):
+                continue
             try:
-                # Strip 'v' prefix from tag name (e.g., "v0.112.0" -> "0.112.0")
-                version = Version(tag_name.lstrip("v"))
+                version_text = tag_name[len(self.tag_prefix) :] if self.tag_prefix is not None else tag_name.lstrip("v")
+                version = Version(version_text)
                 if not version.prerelease:
                     versions.append(version)
             except ValueError:
@@ -86,8 +92,8 @@ class VersionDetector:
         Raises:
             ValueError: If version tag doesn't exist
         """
-        # Git tags have 'v' prefix (e.g., "v0.112.0")
-        tag_name = f"v{version}"
+        prefix = self.tag_prefix if self.tag_prefix is not None else "v"
+        tag_name = f"{prefix}{version}"
         try:
             subprocess.run(
                 [_GIT, "checkout", tag_name],

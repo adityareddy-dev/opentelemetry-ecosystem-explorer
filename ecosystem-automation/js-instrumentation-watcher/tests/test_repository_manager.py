@@ -21,9 +21,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from js_instrumentation_watcher.repository_manager import (
+    BROWSER_REPO_ENV_VAR,
+    BROWSER_REPO_NAME,
+    BROWSER_REPO_URL,
     REPO_ENV_VAR,
     REPO_NAME,
     REPO_URL,
+    BrowserRepositoryManager,
     JsContribRepositoryManager,
 )
 from watcher_common.repository_manager import _GIT
@@ -132,3 +136,43 @@ def test_repo_constants_point_at_js_contrib():
     assert REPO_NAME == "opentelemetry-js-contrib"
     assert REPO_URL.endswith("opentelemetry-js-contrib.git")
     assert REPO_ENV_VAR == "JS_CONTRIB_REPO_PATH"
+
+
+@patch("js_instrumentation_watcher.repository_manager.subprocess.run")
+def test_browser_override_is_read_without_fetch_or_checkout(mock_run, tmp_path, monkeypatch):
+    monkeypatch.setenv(BROWSER_REPO_ENV_VAR, str(tmp_path))
+
+    assert BrowserRepositoryManager().setup() == tmp_path
+    mock_run.assert_not_called()
+
+
+@patch("js_instrumentation_watcher.repository_manager.subprocess.run")
+def test_browser_new_clone_contains_release_history(mock_run, tmp_path, monkeypatch):
+    monkeypatch.delenv(BROWSER_REPO_ENV_VAR, raising=False)
+
+    assert BrowserRepositoryManager(str(tmp_path)).setup() == tmp_path / BROWSER_REPO_NAME
+    assert mock_run.call_args[0][0] == [_GIT, "clone", BROWSER_REPO_URL, str(tmp_path / BROWSER_REPO_NAME)]
+
+
+@patch("js_instrumentation_watcher.repository_manager.subprocess.run")
+def test_browser_cached_clone_explicitly_refreshes_tags(mock_run, tmp_path, monkeypatch):
+    monkeypatch.delenv(BROWSER_REPO_ENV_VAR, raising=False)
+    (tmp_path / BROWSER_REPO_NAME).mkdir()
+
+    BrowserRepositoryManager(str(tmp_path)).setup()
+
+    assert [call.args[0] for call in mock_run.call_args_list] == [
+        [_GIT, "checkout", "main"],
+        [_GIT, "pull"],
+        [_GIT, "fetch", "--tags", "origin"],
+    ]
+
+
+@patch("js_instrumentation_watcher.repository_manager.subprocess.run")
+def test_browser_tag_fetch_failure_is_not_silently_ignored(mock_run, tmp_path, monkeypatch):
+    monkeypatch.delenv(BROWSER_REPO_ENV_VAR, raising=False)
+    (tmp_path / BROWSER_REPO_NAME).mkdir()
+    mock_run.side_effect = [MagicMock(), MagicMock(), subprocess.CalledProcessError(1, "git", stderr="unavailable")]
+
+    with pytest.raises(RuntimeError, match="Failed to fetch browser release tags"):
+        BrowserRepositoryManager(str(tmp_path)).setup()
