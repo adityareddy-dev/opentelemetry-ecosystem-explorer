@@ -114,9 +114,9 @@ are fetched on every run, including when using an existing checkout.
 Only stable `browser-instrumentation-v{version}` tags are considered. All missing tagged versions
 are backfilled, existing registry entries are skipped. The manifest and module source are read from
 each tag using git blob reads, so unreleased working-tree changes cannot enter a release entry.
-Default repository setup pulls `main` before these reads. An explicit `BROWSER_REPO_PATH` skips
-that setup pull and preserves the checkout, while still fetching tags. The
-manifest name and version must match the release tag.
+Default repository setup pulls `main` before these reads. An explicit `BROWSER_REPO_PATH` skips that
+setup pull and preserves the checkout, while still fetching tags. The manifest name and version must
+match the release tag.
 
 Each entry contains package metadata and a sorted `modules` list with `name`, `import_path` and
 `source_path`. A module must have an `./experimental/` export and a matching `src/{name}/index.ts`
