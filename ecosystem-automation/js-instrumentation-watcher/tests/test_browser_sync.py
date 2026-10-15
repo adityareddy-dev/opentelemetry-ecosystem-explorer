@@ -110,3 +110,26 @@ def test_fetch_detects_new_remote_tags(source, tmp_path):
     release("0.8.3", ["console"])
     sync = BrowserSync(clone, InventoryManager(str(tmp_path / "registry")))
     assert sync.sync()["new"] == ["0.8.3", "0.8.2", "0.8.1"]
+
+
+def test_missing_manifest_fails_release(source, tmp_path):
+    repo, _ = source
+    (repo / "packages/instrumentation/package.json").unlink()
+    run_git(repo, "add", ".")
+    git_commit(repo, "test: missing release manifest")
+    run_git(repo, "tag", f"{TAG_PREFIX}0.9.0")
+    sync = BrowserSync(repo, InventoryManager(str(tmp_path / "registry")))
+    with patch.object(sync.detector, "fetch_tags"):
+        result = sync.sync()
+    assert result["failed"] == ["0.9.0"]
+    assert result["new"] == ["0.8.2", "0.8.1"]
+
+
+def test_fetch_failure_does_not_write_stale_registry(source, tmp_path):
+    repo, _ = source
+    inventory = InventoryManager(str(tmp_path / "registry"))
+    sync = BrowserSync(repo, inventory)
+    with patch.object(sync.detector, "fetch_tags", side_effect=RuntimeError("fetch failed")):
+        with pytest.raises(RuntimeError, match="fetch failed"):
+            sync.sync()
+    assert not inventory.registry_dir.exists()

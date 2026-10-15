@@ -24,6 +24,7 @@ from js_instrumentation_watcher.repository_manager import (
     REPO_ENV_VAR,
     REPO_NAME,
     REPO_URL,
+    BrowserRepositoryManager,
     JsContribRepositoryManager,
 )
 from watcher_common.repository_manager import _GIT
@@ -135,15 +136,11 @@ def test_repo_constants_point_at_js_contrib():
 
 
 def test_browser_repo_uses_override(tmp_path, monkeypatch):
-    from js_instrumentation_watcher.repository_manager import BrowserRepositoryManager
-
     monkeypatch.setenv("BROWSER_REPO_PATH", str(tmp_path))
     assert BrowserRepositoryManager().setup() == tmp_path
 
 
 def test_browser_repo_clones_separate_source(tmp_path, monkeypatch):
-    from js_instrumentation_watcher.repository_manager import BrowserRepositoryManager
-
     monkeypatch.delenv("BROWSER_REPO_PATH", raising=False)
     manager = BrowserRepositoryManager(str(tmp_path))
     with patch.object(manager, "_clone_repository") as clone:
