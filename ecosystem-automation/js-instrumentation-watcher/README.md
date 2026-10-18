@@ -127,8 +127,8 @@ engine, Node bundle membership or tested target-library ranges, so these fields 
 
 Each module also includes `scope_name` when its `instrumentation.ts` has a literal string as the
 first argument to `super(...)` at the release tag. If the file is missing or the pattern does not
-match, the field is left out. Existing registry entries remain unchanged. Platform filtering, module
-search and telemetry are follow-up work under #1187.
+match, a warning is logged and the field is left out. Existing registry entries remain unchanged.
+Platform filtering, module search and telemetry are follow-up work under #1187.
 
 A failed browser release is logged and other releases are still attempted, then the command exits
 with an error so the scheduled workflow can report the failure.

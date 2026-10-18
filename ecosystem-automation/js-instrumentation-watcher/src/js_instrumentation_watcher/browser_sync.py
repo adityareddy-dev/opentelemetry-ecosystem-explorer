@@ -76,10 +76,18 @@ class BrowserSync:
                 "source_path": source_path,
             }
             instrumentation = self.detector.read_file_at_ref(ref, f"{source_path}/instrumentation.ts")
-            if instrumentation is not None:
+            if instrumentation is None:
+                logger.warning(
+                    "Missing browser scope_name for %s at %s: %s", source_path, ref, "missing instrumentation.ts"
+                )
+            else:
                 match = SCOPE_NAME_RE.search(instrumentation)
                 if match:
                     module["scope_name"] = match.group(2)
+                else:
+                    logger.warning(
+                        "Missing browser scope_name for %s at %s: %s", source_path, ref, "pattern does not match"
+                    )
             modules.append(module)
         if not modules:
             raise ValueError(f"No exported instrumentation modules at {ref}")

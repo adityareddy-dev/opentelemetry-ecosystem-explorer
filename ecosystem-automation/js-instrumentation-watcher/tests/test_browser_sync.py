@@ -131,10 +131,11 @@ def test_scope_name_is_read_from_release_source(source, tmp_path, call):
         "export {};",
     ],
 )
-def test_omits_scope_name_when_pattern_does_not_match(source, tmp_path, call):
+def test_omits_scope_name_when_pattern_does_not_match(source, tmp_path, call, caplog):
     repo, release = source
     release("0.8.3", ["console"], module_sources={"console": call})
-    data = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.3")
+    with caplog.at_level(logging.WARNING, logger="js_instrumentation_watcher.browser_sync"):
+        data = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.3")
     assert data["modules"] == [
         {
             "name": "console",
@@ -142,6 +143,45 @@ def test_omits_scope_name_when_pattern_does_not_match(source, tmp_path, call):
             "source_path": "packages/instrumentation/src/console",
         }
     ]
+    assert (
+        "js_instrumentation_watcher.browser_sync",
+        logging.WARNING,
+        "Missing browser scope_name for packages/instrumentation/src/console "
+        "at refs/tags/browser-instrumentation-v0.8.3: pattern does not match",
+    ) in caplog.record_tuples
+
+
+def test_warns_when_instrumentation_source_is_missing(source, tmp_path, caplog):
+    repo, _ = source
+    with caplog.at_level(logging.WARNING, logger="js_instrumentation_watcher.browser_sync"):
+        data = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.1")
+    assert all("scope_name" not in module for module in data["modules"])
+    for name in ("console", "xhr"):
+        assert (
+            "js_instrumentation_watcher.browser_sync",
+            logging.WARNING,
+            f"Missing browser scope_name for packages/instrumentation/src/{name} "
+            "at refs/tags/browser-instrumentation-v0.8.1: missing instrumentation.ts",
+        ) in caplog.record_tuples
+
+
+def test_matching_module_does_not_warn(source, tmp_path, caplog):
+    repo, release = source
+    release(
+        "0.8.3",
+        ["console"],
+        module_sources={"console": "super('@opentelemetry/browser-instrumentation/console', version, config);"},
+    )
+    with caplog.at_level(logging.WARNING, logger="js_instrumentation_watcher.browser_sync"):
+        data = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.3")
+    assert data["modules"][0]["scope_name"] == "@opentelemetry/browser-instrumentation/console"
+    # The fixture's absent export still warns, but the matching module does not.
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0] == (
+        "js_instrumentation_watcher.browser_sync",
+        logging.WARNING,
+        "Skipping browser export ./experimental/absent at refs/tags/browser-instrumentation-v0.8.3: missing index.ts",
+    )
 
 
 def test_bad_release_does_not_block_other_versions(source, tmp_path):
