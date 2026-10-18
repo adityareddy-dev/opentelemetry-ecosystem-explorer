@@ -39,14 +39,23 @@ class VersionDetector:
             raise ValueError(f"Repository path does not exist: {repo_path}")
 
     def fetch_tags(self) -> None:
-        """Fetch release tags, including tags added since the last watcher run."""
-        subprocess.run(
-            [_GIT, "fetch", "origin", "--tags"],
-            cwd=self.repo_path,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        """Fetch release tags, including tags added since the last watcher run.
+
+        Raises:
+            ValueError: If git fetch fails. The message includes git's stderr,
+                matching checkout_version, because capture_output otherwise hides
+                the cause from the nightly log.
+        """
+        try:
+            subprocess.run(
+                [_GIT, "fetch", "origin", "--tags"],
+                cwd=self.repo_path,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise ValueError(f"Failed to fetch tags: {e.stderr}") from e
 
     def _list_tags(self) -> list[str]:
         """Return all tag names in the repository."""

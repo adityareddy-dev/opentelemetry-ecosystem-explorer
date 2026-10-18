@@ -16,6 +16,7 @@
 """Release provenance and incremental browser synchronization tests."""
 
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -32,16 +33,18 @@ def source(tmp_path):
     package_dir = repo / "packages/instrumentation"
     package_dir.mkdir(parents=True)
 
-    def release(version, names):
+    def release(version, names, description="Browser instrumentations", extra_exports=None):
         exports = {f"./experimental/{name}": "./build/index.js" for name in names}
         exports["./package.json"] = "./package.json"
         exports["./experimental/absent"] = "./absent.js"
+        if extra_exports:
+            exports.update(extra_exports)
         (package_dir / "package.json").write_text(
             json.dumps(
                 {
                     "name": "@opentelemetry/browser-instrumentation",
                     "version": version,
-                    "description": "Browser instrumentations",
+                    "description": description,
                     "exports": exports,
                 }
             )
@@ -123,6 +126,29 @@ def test_missing_manifest_fails_release(source, tmp_path):
         result = sync.sync()
     assert result["failed"] == ["0.9.0"]
     assert result["new"] == ["0.8.2", "0.8.1"]
+
+
+def test_warns_on_skipped_exports_other_than_package_json(source, tmp_path, caplog):
+    repo, release = source
+    release("0.8.3", ["console"], extra_exports={"./stable/console": "./console.js"})
+    sync = BrowserSync(repo, InventoryManager(str(tmp_path / "registry")))
+    with caplog.at_level(logging.WARNING, logger="js_instrumentation_watcher.browser_sync"):
+        data = sync.parse("0.8.3")
+    assert [module["name"] for module in data["modules"]] == ["console"]
+    assert "./experimental/absent" in caplog.text
+    assert "missing index.ts" in caplog.text
+    assert "./stable/console" in caplog.text
+    assert "not an experimental export" in caplog.text
+    assert "./package.json" not in caplog.text
+
+
+def test_omits_empty_description(source, tmp_path):
+    repo, release = source
+    release("0.8.3", ["console"], description="")
+    data = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.3")
+    assert "description" not in data
+    kept = BrowserSync(repo, InventoryManager(str(tmp_path / "registry"))).parse("0.8.1")
+    assert kept["description"] == "Browser instrumentations"
 
 
 def test_fetch_failure_does_not_write_stale_registry(source, tmp_path):

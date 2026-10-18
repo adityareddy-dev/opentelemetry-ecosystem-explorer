@@ -120,9 +120,11 @@ match the release tag.
 
 Each entry contains package metadata and a sorted `modules` list with `name`, `import_path` and
 `source_path`. A module must have an `./experimental/` export and a matching `src/{name}/index.ts`
-at that tag. SDK releases and utility exports are excluded. Browser metadata has no Node engine,
-Node bundle membership or tested target-library ranges, so these fields are omitted. Scope names,
-platform filtering, module search and telemetry are follow-up work under #1187.
+at that tag. `./package.json` is skipped quietly. Any other skipped export is logged, so a module
+that leaves `./experimental/` or loses its `index.ts` shows up in the watcher log. An empty
+description is left out. SDK releases and prerelease tags are excluded. Browser metadata has no
+Node engine, Node bundle membership or tested target-library ranges, so these fields are omitted.
+Scope names, platform filtering, module search and telemetry are follow-up work under #1187.
 
 A failed browser release is logged and other releases are still attempted, then the command exits
 with an error so the scheduled workflow can report the failure.

@@ -29,6 +29,16 @@ PACKAGE_PATH = "packages/instrumentation"
 PACKAGE_NAME = "@opentelemetry/browser-instrumentation"
 
 
+def _skip_reason(export: str) -> str | None:
+    """Return why an export is not a module, or None when its source should be checked."""
+    if not export.startswith("./experimental/"):
+        return "not an experimental export"
+    name = export.removeprefix("./experimental/")
+    if not name or "/" in name or name in {".", ".."}:
+        return "not a single module name"
+    return None
+
+
 class BrowserSync:
     """Store one immutable package entry with its exported modules per release."""
 
@@ -47,13 +57,16 @@ class BrowserSync:
             raise ValueError(f"Package name/version does not match {ref}")
         modules = []
         for export in sorted(package.get("exports", {})):
-            if not export.startswith("./experimental/"):
+            # package.json is a package export, not an instrumentation module.
+            if export == "./package.json":
                 continue
+            reason = _skip_reason(export)
             name = export.removeprefix("./experimental/")
-            if not name or "/" in name or name in {".", ".."}:
-                continue
             source_path = f"{PACKAGE_PATH}/src/{name}"
-            if self.detector.read_file_at_ref(ref, f"{source_path}/index.ts") is None:
+            if reason is None and self.detector.read_file_at_ref(ref, f"{source_path}/index.ts") is None:
+                reason = "missing index.ts"
+            if reason is not None:
+                logger.warning("Skipping browser export %s at %s: %s", export, ref, reason)
                 continue
             modules.append(
                 {
@@ -64,15 +77,18 @@ class BrowserSync:
             )
         if not modules:
             raise ValueError(f"No exported instrumentation modules at {ref}")
-        return {
+        entry = {
             "name": "browser-instrumentation",
             "npm_package": PACKAGE_NAME,
             "version": version,
-            "description": package.get("description", ""),
             "repository": "open-telemetry/opentelemetry-browser",
             "source_path": PACKAGE_PATH,
             "modules": modules,
         }
+        description = package.get("description") or ""
+        if description:
+            entry["description"] = description
+        return entry
 
     def sync(self) -> dict[str, list[str]]:
         """Detect all stable release tags and backfill only missing versions."""

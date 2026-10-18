@@ -15,6 +15,9 @@
 
 """Test default and component-specific release tag detection."""
 
+import subprocess
+
+import pytest
 from semantic_version import Version
 from watcher_common.testing import git_commit, init_repo, run_git
 from watcher_common.version_detector import VersionDetector
@@ -35,3 +38,11 @@ def test_prefix_is_exact_and_checkout_uses_it(tmp_path):
     git_commit(tmp_path, "test: unreleased changes")
     detector.checkout_version(Version("0.8.1"))
     assert (tmp_path / "file").read_text() == "release"
+
+
+def test_fetch_tags_keeps_git_stderr(tmp_path):
+    init_repo(tmp_path)
+    with pytest.raises(ValueError, match="Failed to fetch tags:") as raised:
+        VersionDetector(tmp_path).fetch_tags()
+    assert "origin" in str(raised.value)
+    assert isinstance(raised.value.__cause__, subprocess.CalledProcessError)
