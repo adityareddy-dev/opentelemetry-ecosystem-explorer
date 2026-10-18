@@ -17,6 +17,7 @@
 
 import json
 import logging
+import re
 from pathlib import Path
 
 from watcher_common.version_detector import VersionDetector
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 TAG_PREFIX = "browser-instrumentation-v"
 PACKAGE_PATH = "packages/instrumentation"
 PACKAGE_NAME = "@opentelemetry/browser-instrumentation"
+SCOPE_NAME_RE = re.compile(r"""^\s*super\(\s*(['"])([^'"\r\n]+)\1\s*,""", re.MULTILINE)
 
 
 def _skip_reason(export: str) -> str | None:
@@ -68,13 +70,17 @@ class BrowserSync:
             if reason is not None:
                 logger.warning("Skipping browser export %s at %s: %s", export, ref, reason)
                 continue
-            modules.append(
-                {
-                    "name": name,
-                    "import_path": f"{PACKAGE_NAME}/{export.removeprefix('./')}",
-                    "source_path": source_path,
-                }
-            )
+            module = {
+                "name": name,
+                "import_path": f"{PACKAGE_NAME}/{export.removeprefix('./')}",
+                "source_path": source_path,
+            }
+            instrumentation = self.detector.read_file_at_ref(ref, f"{source_path}/instrumentation.ts")
+            if instrumentation is not None:
+                match = SCOPE_NAME_RE.search(instrumentation)
+                if match:
+                    module["scope_name"] = match.group(2)
+            modules.append(module)
         if not modules:
             raise ValueError(f"No exported instrumentation modules at {ref}")
         entry = {
