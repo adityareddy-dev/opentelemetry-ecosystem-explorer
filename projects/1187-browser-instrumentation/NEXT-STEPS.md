@@ -16,8 +16,8 @@ last_updated: "2026-10-18"
 ## Proposed steps, each small enough to merge alone
 
 1. [x] A browser source in `js-instrumentation-watcher` that writes the package entry with `modules`
-   (`name`, `import_path`, `source_path`), read at release tags. The JavaScript builder publishes
-   `modules` and `repository` on the package file.
+       (`name`, `import_path`, `source_path`), read at release tags. The JavaScript builder
+       publishes `modules` and `repository` on the package file.
 2. `scope_name` per module, optional and left out when the pattern does not match.
 3. An optional `platform` field, if wanted, starting from the `web` keyword.
 4. Module names in `index.json` so search on the list page from
@@ -46,9 +46,9 @@ the instrumentation. Every scope was flagged for a missing `schema_url`, matchin
    holds all the submodules, the way the Java agent packages its instrumentations
    ([comment](https://github.com/open-telemetry/opentelemetry-ecosystem-explorer/issues/1187#issuecomment-5949532605)).
 2. Can another SIG's repo share the JS watcher, its nightly PR and its failure notification?
-3. Answered on 2026-10-18: leave out the five keys the browser repo has no value for
-   (`node_engine`, `in_auto_instrumentations_node`, `component_owners`, `supported_versions`,
-   `tested_versions`), and leave out an empty optional field instead of writing `""`.
+3. Answered on 2026-10-18: leave out the five keys the browser repo has no value for (`node_engine`,
+   `in_auto_instrumentations_node`, `component_owners`, `supported_versions`, `tested_versions`),
+   and leave out an empty optional field instead of writing `""`.
 4. Answered on 2026-10-18: read stable `browser-instrumentation-v*` tags, and backfill every missing
    tag. The pull request records a live read of the 11 releases from 0.2.0 through 0.8.2.
 5. Is a `platform` field wanted on JS entries? If so, is the `web` keyword the right signal, and how
